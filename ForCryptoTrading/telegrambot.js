@@ -7,86 +7,75 @@ app.use(express.json())
 
 const BOT_TOKEN = process.env.BOT_TOKEN
 const SERVER_URL = process.env.SERVER_URL
-const IS_TEST = process.env.IS_TEST;
+const IS_REPLY = process.env.IS_REPLY;
 
 console.log(`BOT_TOKEN=${BOT_TOKEN}`)
 console.log(`SERVER_URL=${SERVER_URL}`)
 
 const BOT_URL = `https://api.telegram.org/bot${BOT_TOKEN}`
-const API_SEND_REPLY = '/sendReply'
+const API_RECEIVE_MESSAGE = '/receiveMessage'
 const API_SEND_MESSAGE = '/sendMessage'
 
 var chat_id;
 
-function init() {
-	app.all('/', (req, res) => {
-		console.log(`${req.body}`)
-		res.send()
+app.all('/', (req, res) => {
+	console.log(`/:body=${req.body}`)
+	res.send()
+})
 
-		setWebhook()
-	})
+app.all(API_RECEIVE_MESSAGE, (req, res) => {
+	console.log(`${API_RECEIVE_MESSAGE}:body=${req.body}`)
+	res.send()
 
-	app.all(API_SEND_REPLY, (req, res) => {
-		console.log(`${req.body}`)
-		res.send()
+	chat_id = req.body.message.chat.id
 
-		chat_id = req.body.message.chat.id
+	if (IS_REPLY) {
+		sendMessage(req.body.message.text)
+	}
+})
 
-		if (IS_TEST) {
-			sendMessage(req.body.message.text)
-		}
-	})
+app.all(API_SEND_MESSAGE, (req, res) => {
+	console.log(`${API_SEND_MESSAGE}:body=${req.body}`)
+	res.send()
 
-	app.all(API_SEND_MESSAGE, (req, res) => {
-		console.log(`${req.body}`)
-		res.send()
+	sendMessage(req.body.message)
+})
 
-		if (IS_TEST) {
-			sendMessage('message')
+app.listen()
+
+request(
+	{
+		url: `${BOT_URL}/setWebhook?url=${SERVER_URL}${API_RECEIVE_MESSAGE}`,
+		method: 'GET',
+	},
+	(error, response, body) => {
+		console.log(`setWebhook?url=${SERVER_URL}${API_RECEIVE_MESSAGE}`)
+		if (error) {
+			console.log(`error=${error}`)
+		} else if (response.statusCode === 200) {
+			console.log(`responseBody=${body}`)
 		} else {
-			sendMessage(req.body.message)
+			console.log(`statusCode=${response.statusCode}`)
 		}
-	})
-
-	app.listen()
-}
-
-function setWebhook() {
-	request(
-		{
-			url: `${BOT_URL}/setWebhook?url=${SERVER_URL}${API_SEND_REPLY}`,
-			method: 'GET',
-		},
-		(error, response, body) => {
-			console.log(`setWebhook`)
-			if (error) {
-				console.log(error)
-			} else if (response.statusCode === 200) {
-				console.log(body)
-			} else {
-				console.log(response.statusCode)
-			}
-		}
-	);
-}
+	}
+)
 
 function sendMessage(message) {
+	console.log(`sendMessage(${message}) is called`)
 	request(
 		{
 			url: `${BOT_URL}/sendMessage?chat_id=${chat_id}&text=${message}`,
 			method: 'GET',
 		},
 		(error, response, body) => {
-			console.log(`sendMessage`)
+			console.log(`sendMessage?text=${message}`)
 			if (error) {
-				console.log(error)
+				console.log(`error=${error}`)
 			} else if (response.statusCode === 200) {
-				console.log(body)
+				console.log(`responseBody=${body}`)
 			} else {
-				console.log(response.statusCode)
+				console.log(`statusCode=${response.statusCode}`)
 			}
 		}
-	);
+	)
 }
-
-module.exports = { init, setWebhook, sendMessage }
